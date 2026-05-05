@@ -38,10 +38,10 @@ if GEMINI_API_KEY:
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 GROQ_MODEL          = "llama-3.3-70b-versatile"
-GEMINI_MODEL        = "gemini-2.0-flash"
+GEMINI_MODEL        = "gemini-1.5-flash"   # More stable for free tier
 MAX_QUESTION_LEN    = 500
-MAX_CONTEXT_CHARS   = 12_000   # trim context to keep within token budget
-MAX_TOKENS_RESPONSE = 1500     # increased from 1200 for more complete answers
+MAX_CONTEXT_CHARS   = 10_000   # reduced slightly to stay within token limits
+MAX_TOKENS_RESPONSE = 1500     
 TEMPERATURE         = 0.1
 
 # ── Forbidden-topic filter ─────────────────────────────────────────────────────
@@ -285,8 +285,15 @@ async def generate_answer_stream(question: str, context: str):
                     yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
                 return
 
-    yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen daha sonra tekrar deneyin."
+    # 4. SUPER SAFE FALLBACK: If all models fail, show the raw context if it looks relevant
+    print("[LLM] All models failed. Attempting knowledge-first fallback.")
+    if "2024-2025" in context or "H\u00fcseyin" in context:
+        yield "Sistem \u015fu an \u00e7ok yo\u011fun, ancak arad\u0131\u011f\u0131n\u0131z bilgiyi web sitesinden \u015fu \u015fekilde buldum:\n\n"
+        # Yield the first 1000 chars of prioritized context
+        yield context[:2000]
+        return
 
+    yield "Sistem \u015fu an a\u015f\u0131r\u0131 yo\u011funluk nedeniyle yan\u0131t veremiyor. L\u00fctfen birka\u00e7 dakika sonra tekrar deneyin."
 
 async def generate_answer(question: str, context: str) -> str:
     """Non-streaming wrapper — mainly for tests."""
