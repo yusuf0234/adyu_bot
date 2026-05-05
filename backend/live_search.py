@@ -497,7 +497,9 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
     # ── Deduplicate preserving priority order ──────────────────────────────────
     seen: set[str] = set()
     unique: list[str] = []
-    for url in priority_urls + ddg_urls:
+    # VERY IMPORTANT: ddg_urls MUST come first, because they are specific to the query.
+    # priority_urls contains 20+ generic department URLs which would otherwise push DDG results out of the MAX_URLS limit.
+    for url in ddg_urls + priority_urls:
         if url and url not in seen:
             seen.add(url)
             unique.append(url)
