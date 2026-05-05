@@ -3,10 +3,7 @@ uvicorn
 beautifulsoup4
 lxml
 requests
-sentence-transformers
-faiss-cpu
 python-dotenv
-huggingface-hub
 apscheduler
 google-genai
 pydantic

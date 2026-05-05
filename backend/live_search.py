@@ -14,6 +14,13 @@ import re
 import time
 import threading
 import asyncio
+
+def safe_print(msg: str):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(str(msg).encode('ascii', 'backslashreplace').decode('ascii'))
+
 import httpx
 from bs4 import BeautifulSoup
 
@@ -25,7 +32,7 @@ except ImportError:
         from duckduckgo_search import DDGS
     except ImportError:
         DDGS = None
-        print("[live_search] WARNING: DuckDuckGo search library not found. Install 'ddgs' or 'duckduckgo-search'.")
+        safe_print("[live_search] WARNING: DuckDuckGo search library not found. Install 'ddgs' or 'duckduckgo-search'.")
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 DEFAULT_TIMEOUT = 8        # seconds per HTTP request
@@ -167,7 +174,7 @@ async def scrape_cafeteria_menu(client: httpx.AsyncClient) -> str:
                 result = f"{today_str} tarihli yemek menüsü sayfada bulundu ancak içerik çıkarılamadı."
 
             _food_cache.set(cache_key, result)
-            print(f"[live_search] Cafeteria menu fetched for {today_str}: {len(menu_blocks)} menu(s)")
+            safe_print(f"[live_search] Cafeteria menu fetched for {today_str}: {len(menu_blocks)} menu(s)")
             return result
 
         # No item matched today's date
@@ -176,7 +183,7 @@ async def scrape_cafeteria_menu(client: httpx.AsyncClient) -> str:
         return result
 
     except Exception as e:
-        print(f"[live_search] Cafeteria menu fetch failed: {e}")
+        safe_print(f"[live_search] Cafeteria menu fetch failed: {e}")
         return ""
 
 
@@ -261,7 +268,7 @@ async def scrape_url(url: str, client: httpx.AsyncClient) -> tuple[str, str]:
         # Skip error pages
         title_text = (soup.title.string or '').lower() if soup.title else ''
         if any(kw in title_text for kw in _ERROR_TITLE_KW):
-            print(f"[live_search] Skipping error page: {url} ({title_text[:60]})")
+            safe_print(f"[live_search] Skipping error page: {url} ({title_text[:60]})")
             _scrape_cache.set(url, '')
             return url, ''
 
@@ -291,11 +298,11 @@ async def scrape_url(url: str, client: httpx.AsyncClient) -> tuple[str, str]:
         return url, result
 
     except httpx.TimeoutException:
-        print(f"[live_search] Timeout scraping {url}")
+        safe_print(f"[live_search] Timeout scraping {url}")
     except httpx.RequestError:
-        print(f"[live_search] Request error scraping {url}")
+        safe_print(f"[live_search] Request error scraping {url}")
     except Exception as e:
-        print(f"[live_search] Failed to scrape {url}: {e}")
+        safe_print(f"[live_search] Failed to scrape {url}: {e}")
 
     _scrape_cache.set(url, '')
     return url, ''
@@ -434,9 +441,9 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
                 _ddg_cache.set(search_query, hrefs)
                 ddg_urls.extend(hrefs)
             except Exception as e:
-                print(f"[live_search] DuckDuckGo search error: {e}")
+                safe_print(f"[live_search] DuckDuckGo search error: {e}")
     else:
-        print("[live_search] Skipping DuckDuckGo search — library not available.")
+        safe_print("[live_search] Skipping DuckDuckGo search — library not available.")
 
     # ── Deduplicate preserving priority order ──────────────────────────────────
     seen: set[str] = set()
@@ -499,7 +506,7 @@ async def get_live_context(question: str) -> tuple[list[str], set[str]]:
         
         for url, res in zip(urls, results):
             if isinstance(res, Exception):
-                print(f"[live_search] Async task error for {url}: {res}")
+                safe_print(f"[live_search] Async task error for {url}: {res}")
             else:
                 fetched_url, text = res
                 if text and text.strip():
