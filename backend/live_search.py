@@ -37,7 +37,7 @@ except ImportError:
 # ── Config ─────────────────────────────────────────────────────────────────────
 DEFAULT_TIMEOUT = 8        # seconds per HTTP request
 MAX_CHUNK_LEN   = 5000     # max chars returned per scraped page
-MAX_URLS        = 8        # max URLs to scrape per query
+MAX_URLS        = 12       # max URLs to scrape per query
 MAX_DDG_RESULTS = 5        # max DuckDuckGo results
 MAX_WORKERS     = 6        # thread pool size for concurrent scraping
 SCRAPE_TTL      = 3600     # 1 hour page cache
@@ -400,22 +400,36 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
         "idari mali":     "imidb",
         "sağlık kültür":  "sksdb",
     }
-    MANAGEMENT_KW = ["başkan", "yönetim", "müdür", "kadro"]
+    MANAGEMENT_KW = ["başkan", "yönetim", "müdür", "kadro", "şube"]
 
     for kw, sub in UNIT_MAP.items():
         if _has_kw(q, kw) or _has_kw(q, sub):
             base = f"https://{sub}.adiyaman.edu.tr/"
             priority_urls.append(base)
             if _has_kw(q, *MANAGEMENT_KW):
-                priority_urls += [f"{base}tr/personel", f"{base}tr/yonetim"]
+                priority_urls += [
+                    f"{base}tr/personel",
+                    f"{base}tr/yonetim",
+                    f"{base}tr/yonetim/sube-mudurler",
+                ]
+
+    # All known administrative subdomains for comprehensive person search
+    _STAFF_SUBDOMAINS = ["bidb", "oidb", "sksdb", "sgdb", "yidb", "imidb", "kutuphane", "personel"]
 
     # ── Academic staff / person queries (word-boundary 'kim' fix) ─────────────
-    if _has_kw(q, "kimdir", "hoca", "prof", "doç", "öğretim üyesi", "araştırma görevlisi"):
+    if _has_kw(q, "kimdir", "hoca", "prof", "doç", "öğretim üyesi", "araştırma görevlisi",
+               "müdür", "şube müdür", "daire başkan"):
         priority_urls += [
             "https://akademik.adiyaman.edu.tr/",
-            "https://bidb.adiyaman.edu.tr/tr/personel",
             "https://www.adiyaman.edu.tr/tr/personel",
         ]
+        # Search management/staff pages across all administrative units
+        for sub in _STAFF_SUBDOMAINS:
+            priority_urls += [
+                f"https://{sub}.adiyaman.edu.tr/tr/personel",
+                f"https://{sub}.adiyaman.edu.tr/tr/yonetim",
+                f"https://{sub}.adiyaman.edu.tr/tr/yonetim/sube-mudurler",
+            ]
     # 'personel' ve 'başkan' ayrıca daha geniş ama word-boundary ile
     if _has_kw(q, "personel", "başkan") and not _has_kw(q, "kimdir", "hoca"):
         priority_urls += [
