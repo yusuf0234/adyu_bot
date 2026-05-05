@@ -415,7 +415,7 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
 
         # All known administrative and academic subdomains for comprehensive person search
     _STAFF_SUBDOMAINS_ACADEMIC = [
-        "tip", "egitim", "fen", "muhendislik", "dis", "saglik", "iibf", "islami", 
+        "abys", "tip", "egitim", "fen", "muhendislik", "dis", "saglik", "iibf", "islami", 
         "guzelsanatlar", "eczacilik", "turizm", "tarim",
         "sbe", "fbe", "sabe", "besyo", "ydyo", "shmyo", "tbmyo"
     ]
@@ -491,14 +491,23 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
                 resp = await client.post(url, data=data, headers=headers)
                 if resp.status_code == 200:
                     from bs4 import BeautifulSoup
+                    import re as _re
                     soup = BeautifulSoup(resp.text, "html.parser")
                     raw_links = []
-                    for a in soup.find_all("a", class_="result__url"):
+                    # DDG Lite links are usually inside 'a' tags with class 'result-link' or just in result divs
+                    for a in soup.find_all("a", href=True):
                         href = a.get("href")
-                        if href and "adiyaman.edu.tr" in href and href not in raw_links:
-                            raw_links.append(href)
-                    ddg_urls.extend(raw_links[:5])
-                    safe_print(f"[live_search] DDG Raw POST returned {len(raw_links[:5])} results")
+                        # Filter for university links, avoiding internal DDG links
+                        if href and "adiyaman.edu.tr" in href and "duckduckgo" not in href:
+                            # Clean potential DDG redirect wrappers
+                            if "uddg=" in href:
+                                from urllib.parse import unquote
+                                href = unquote(href.split("uddg=")[1].split("&")[0])
+                            
+                            if href not in raw_links:
+                                raw_links.append(href)
+                    ddg_urls.extend(raw_links[:8])
+                    safe_print(f"[live_search] DDG Raw POST returned {len(raw_links[:8])} results")
         except Exception as e:
             safe_print(f"[live_search] DDG Raw POST error: {e}")
 
