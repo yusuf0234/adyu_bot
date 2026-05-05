@@ -176,13 +176,19 @@ async def _groq_stream(question: str, context: str, max_retries: int = 3):
             return  # success
         except Exception as e:
             err_str = str(e).lower()
+            print(f"[LLM] Attempt {attempt} failed: {e}")
             is_retryable = any(code in err_str for code in ("429", "503", "rate_limit", "overloaded"))
+            
             if is_retryable and attempt < max_retries:
-                print(f"[LLM] Groq retryable error (attempt {attempt+1}): {e}. Waiting {delay:.1f}s…")
                 await asyncio.sleep(delay)
                 delay *= 2
+                continue
             else:
-                raise
+                if "429" in err_str or "rate" in err_str:
+                    yield "Sistem şu an çok yoğun (hız sınırı), lütfen birkaç saniye sonra tekrar deneyin."
+                else:
+                    yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
+                return
 
 
 # ── Gemini streaming with retry ────────────────────────────────────────────────
