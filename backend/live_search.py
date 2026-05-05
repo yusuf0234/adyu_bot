@@ -413,8 +413,16 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
                     f"{base}tr/yonetim/sube-mudurler",
                 ]
 
-    # All known administrative subdomains for comprehensive person search
-    _STAFF_SUBDOMAINS = ["bidb", "oidb", "sksdb", "sgdb", "yidb", "imidb", "kutuphane", "personel"]
+    # All known administrative and academic subdomains for comprehensive person search
+    _STAFF_SUBDOMAINS = [
+        # Administrative
+        "bidb", "oidb", "sksdb", "sgdb", "yidb", "imidb", "kutuphane", "personel",
+        # Faculties
+        "tip", "egitim", "fen", "muhendislik", "dis", "saglik", "iibf", "islami", 
+        "guzelsanatlar", "eczacilik", "turizm", "tarim",
+        # Institutes & Schools
+        "sbe", "fbe", "sabe", "besyo", "ydyo", "shmyo", "tbmyo"
+    ]
 
     # ── Academic staff / person queries (word-boundary 'kim' fix) ─────────────
     if _has_kw(q, "kimdir", "hoca", "prof", "doç", "öğretim üyesi", "araştırma görevlisi",
