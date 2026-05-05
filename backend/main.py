@@ -23,7 +23,12 @@ from typing import Optional
 
 load_dotenv()
 
-from vector_store import vector_store
+try:
+    from vector_store import vector_store
+except Exception as e:
+    print(f"[AdyuBot] WARNING: vector_store import failed: {e}")
+    vector_store = None
+
 from scraper import scrape_site
 from llm import generate_answer_stream, check_forbidden_topics, MAX_QUESTION_LEN
 from logger import log_interaction, get_recent_logs, init_db
@@ -81,10 +86,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AdyuBot API", version="3.0.0", lifespan=lifespan)
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
-origins = [FRONTEND_URL] if FRONTEND_URL != "*" else ["*"]
+if FRONTEND_URL == "*":
+    origins = ["*"]
+else:
+    origins = [u.strip() for u in FRONTEND_URL.split(",") if u.strip()]
 # Add common dev origins
-if "http://localhost:5173" not in origins:
-    origins.append("http://localhost:5173")
+for dev_origin in ["http://localhost:5173", "http://localhost:3000"]:
+    if dev_origin not in origins:
+        origins.append(dev_origin)
 
 app.add_middleware(
     CORSMiddleware,
@@ -277,8 +286,9 @@ def _background_crawl():
     print("[Crawler] Starting background crawl…")
     try:
         chunks = scrape_site()
-        vector_store.clear()
-        vector_store.add_chunks(chunks)
+        if vector_store:
+            vector_store.clear()
+            vector_store.add_chunks(chunks)
         query_cache.clear()
         print(f"[Crawler] Done. {len(chunks)} chunks indexed.")
     except Exception as e:

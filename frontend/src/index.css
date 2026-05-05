@@ -167,9 +167,9 @@ body {
 }
 
 .header-badge.offline {
-  color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.22);
 }
 
 .status-dot {
@@ -185,7 +185,8 @@ body {
 }
 
 .offline .status-dot {
-  background: var(--error);
+  background: var(--warning);
+  animation: blink 1.2s ease-in-out infinite;
 }
 
 @keyframes blink {

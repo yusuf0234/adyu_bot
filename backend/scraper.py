@@ -1,4 +1,4 @@
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import time
@@ -35,55 +35,55 @@ def scrape_site():
     to_visit = [BASE_URL]
     all_chunks = []
     
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': 'AdyuBot/1.0 (Research Purpose)'
-    })
-
-    while to_visit and len(visited) < MAX_PAGES:
-        url = to_visit.pop(0)
-        
-        if url in visited:
-            continue
+    with httpx.Client(
+        headers={'User-Agent': 'AdyuBot/1.0 (Research Purpose)'},
+        timeout=10,
+        follow_redirects=True,
+    ) as client:
+        while to_visit and len(visited) < MAX_PAGES:
+            url = to_visit.pop(0)
             
-        try:
-            val = urlparse(url)
-            if val.netloc != DOMAIN:
+            if url in visited:
                 continue
                 
-            response = session.get(url, timeout=10)
-            visited.add(url)
-            
-            if response.status_code != 200 or 'text/html' not in response.headers.get('Content-Type', ''):
-                continue
+            try:
+                val = urlparse(url)
+                if val.netloc != DOMAIN:
+                    continue
+                    
+                response = client.get(url)
+                visited.add(url)
                 
-            text = extract_text_from_html(response.text)
-            chunks = chunk_text(text)
-            
-            for c in chunks:
-                all_chunks.append({
-                    "text": c,
-                    "url": url
-                })
+                if response.status_code != 200 or 'text/html' not in response.headers.get('Content-Type', ''):
+                    continue
+                    
+                text = extract_text_from_html(response.text)
+                chunks = chunk_text(text)
                 
-            # Find more links
-            soup = BeautifulSoup(response.text, 'html.parser')
-            for link in soup.find_all('a', href=True):
-                href = link['href']
-                full_url = urljoin(url, href)
-                # Normalize url by removing fragments
-                full_url = full_url.split('#')[0]
+                for c in chunks:
+                    all_chunks.append({
+                        "text": c,
+                        "url": url
+                    })
+                    
+                # Find more links
+                soup = BeautifulSoup(response.text, 'html.parser')
+                for link in soup.find_all('a', href=True):
+                    href = link['href']
+                    full_url = urljoin(url, href)
+                    # Normalize url by removing fragments
+                    full_url = full_url.split('#')[0]
+                    
+                    if full_url not in visited and urlparse(full_url).netloc == DOMAIN:
+                        if full_url not in to_visit:
+                            to_visit.append(full_url)
+                            
+                print(f"Scraped {url} - Total visited: {len(visited)} - Chunks so far: {len(all_chunks)}")
+                time.sleep(0.5) # Polite scraping
                 
-                if full_url not in visited and urlparse(full_url).netloc == DOMAIN:
-                    if full_url not in to_visit:
-                        to_visit.append(full_url)
-                        
-            print(f"Scraped {url} - Total visited: {len(visited)} - Chunks so far: {len(all_chunks)}")
-            time.sleep(0.5) # Polite scraping
-            
-        except Exception as e:
-            print(f"Error scraping {url}: {e}")
-            visited.add(url)
+            except Exception as e:
+                print(f"Error scraping {url}: {e}")
+                visited.add(url)
             
     return all_chunks
 

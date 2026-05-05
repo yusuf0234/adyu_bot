@@ -196,7 +196,7 @@ function App() {
   useEffect(() => {
     const checkOnline = async () => {
       try {
-        const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(3000) });
+        const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(15000) });
         setIsOnline(res.ok);
       } catch {
         setIsOnline(false);
@@ -349,7 +349,7 @@ function App() {
         <div className="header-actions">
           <div className={`header-badge ${isOnline ? 'online' : 'offline'}`}>
             <span className="status-dot" />
-            {isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
+            {isOnline ? 'Çevrimiçi' : 'Uyanıyor…'}
           </div>
           <button
             onClick={handleClearChat}
