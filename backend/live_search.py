@@ -414,25 +414,33 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
                 ]
 
         # All known administrative and academic subdomains for comprehensive person search
-    _STAFF_SUBDOMAINS = [
-        # Administrative
-        "bidb", "oidb", "sksdb", "sgdb", "yidb", "imidb", "kutuphane", "personel",
-        # Faculties
+    _STAFF_SUBDOMAINS_ACADEMIC = [
         "tip", "egitim", "fen", "muhendislik", "dis", "saglik", "iibf", "islami", 
         "guzelsanatlar", "eczacilik", "turizm", "tarim",
-        # Institutes & Schools
         "sbe", "fbe", "sabe", "besyo", "ydyo", "shmyo", "tbmyo"
     ]
+    _STAFF_SUBDOMAINS_ADMIN = [
+        "bidb", "oidb", "sksdb", "sgdb", "yidb", "imidb", "kutuphane", "personel"
+    ]
 
-    # ── Academic staff / person queries (word-boundary 'kim' fix) ─────────────
-    if _has_kw(q, "kimdir", "hoca", "prof", "doç", "öğretim üyesi", "araştırma görevlisi",
-               "müdür", "şube müdür", "daire başkan"):
+    local_max_urls = MAX_URLS
+
+    # \u2500\u2500 Academic staff / person queries (word-boundary 'kim' fix) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    if _has_kw(q, "kimdir", "hoca", "prof", "do\u00e7", "\u00f6\u011fretim \u00fcyesi", "ara\u015ft\u0131rma g\u00f6revlisi",
+               "m\u00fcd\u00fcr", "\u015fube m\u00fcd\u00fcr", "daire ba\u015fkan"):
+        local_max_urls = 30  # Increase max URLs to scan all faculties for this person
         priority_urls += [
             "https://akademik.adiyaman.edu.tr/",
             "https://www.adiyaman.edu.tr/tr/personel",
         ]
-        # Search management/staff pages across all administrative units
-        for sub in _STAFF_SUBDOMAINS:
+        # 1. First search academic faculties (most likely for professors/staff)
+        for sub in _STAFF_SUBDOMAINS_ACADEMIC:
+            priority_urls += [
+                f"https://{sub}.adiyaman.edu.tr/tr/personel",
+                f"https://{sub}.adiyaman.edu.tr/tr/yonetim",
+            ]
+        # 2. Then search administrative units
+        for sub in _STAFF_SUBDOMAINS_ADMIN:
             priority_urls += [
                 f"https://{sub}.adiyaman.edu.tr/tr/personel",
                 f"https://{sub}.adiyaman.edu.tr/tr/yonetim",
@@ -494,17 +502,16 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
         except Exception as e:
             safe_print(f"[live_search] DDG Raw POST error: {e}")
 
-    # ── Deduplicate preserving priority order ──────────────────────────────────
+    # \u2500\u2500 Deduplicate preserving priority order \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r
     seen: set[str] = set()
     unique: list[str] = []
     # VERY IMPORTANT: ddg_urls MUST come first, because they are specific to the query.
-    # priority_urls contains 20+ generic department URLs which would otherwise push DDG results out of the MAX_URLS limit.
     for url in ddg_urls + priority_urls:
         if url and url not in seen:
             seen.add(url)
             unique.append(url)
 
-    return unique[:MAX_URLS]
+    return unique[:local_max_urls]
 
 
 _FOOD_KEYWORDS = frozenset(["yemek", "menü", "menu", "yemekhane", "kafeterya", "bugün ne var", "öğle yemeği"])
