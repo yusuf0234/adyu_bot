@@ -195,12 +195,16 @@ async def _groq_stream(question: str, context: str, max_retries: int = 3):
 
 
 # ── Gemini streaming with retry ────────────────────────────────────────────────
-async def _gemini_stream(question: str, context: str, max_retries: int = 1):
+async def _gemini_stream(question: str, context: str, max_retries: int = 4):
     if not gemini_client:
         raise RuntimeError("Gemini client is not initialized.")
     from google.genai import types as gemini_types
+    import random
 
-    delay = 2.0
+    # Jitter to avoid RPM collisions
+    await asyncio.sleep(random.uniform(0.2, 0.6))
+
+    delay = 3.0
     for attempt in range(max_retries + 1):
         try:
             response = await gemini_client.aio.models.generate_content_stream(
@@ -219,20 +223,16 @@ async def _gemini_stream(question: str, context: str, max_retries: int = 1):
         except Exception as e:
             err_str = str(e).lower()
             print(f"[LLM] Gemini attempt {attempt} failed: {e}")
-            is_rate_limit = any(code in err_str for code in ("429", "rate_limit"))
-            is_retryable = is_rate_limit or any(code in err_str for code in ("503", "overloaded"))
+            is_rate_limit = any(code in err_str for code in ("429", "rate_limit", "quota"))
+            is_retryable = is_rate_limit or any(code in err_str for code in ("503", "overloaded", "limit exceeded"))
             
             if is_retryable and attempt < max_retries:
-                # ADAPTIVE TRUNCATION: If rate limited, reduce context drastically for the retry
                 if is_rate_limit:
                     context = context[:len(context)//2]
-                    print(f"[LLM] Rate limit hit. Retrying with half context ({len(context)} chars).")
-                
                 await asyncio.sleep(delay)
-                delay *= 2
+                delay *= 2.0
                 continue
             else:
-                # Raise to allow fallback in generate_answer_stream
                 raise e
 
 
@@ -250,7 +250,7 @@ async def generate_answer_stream(question: str, context: str):
         yield "Bu asistan yalnızca Adıyaman Üniversitesi kapsamında hizmet vermektedir."
         return
 
-    # Try Gemini first (better rate limits and context window)
+    # 1. Try Gemini first (best quality, high context)
     if gemini_client:
         try:
             async for chunk in _gemini_stream(question, context):
@@ -259,20 +259,31 @@ async def generate_answer_stream(question: str, context: str):
         except Exception as e:
             print(f"[LLM] Gemini failed, falling back to Groq: {e}")
 
-    # Fallback to Groq
+    # 2. Try Groq (Llama-3.3-70b)
     if groq_client:
         try:
             async for chunk in _groq_stream(question, context):
                 yield chunk
             return
         except Exception as e:
-            print(f"[LLM] Groq failed: {e}")
-            err_str = str(e).lower()
-            if "429" in err_str or "rate" in err_str:
-                yield "Sistem şu an çok yoğun (hız sınırı), lütfen birkaç saniye sonra tekrar deneyin."
-            else:
-                yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
-            return
+            print(f"[LLM] Groq 70b failed, trying 8b instant: {e}")
+            # 3. Last resort: Llama-3.1-8b (High RPM limit)
+            try:
+                # Local override for model
+                old_model = GROQ_MODEL
+                globals()['GROQ_MODEL'] = "llama-3.1-8b-instant"
+                async for chunk in _groq_stream(question, context, max_retries=1):
+                    yield chunk
+                globals()['GROQ_MODEL'] = old_model
+                return
+            except Exception as e2:
+                print(f"[LLM] All fallback models failed: {e2}")
+                err_str = str(e2).lower()
+                if "429" in err_str or "rate" in err_str:
+                    yield "Sistem şu an aşırı yoğunluk nedeniyle yanıt veremiyor. Lütfen 30 saniye sonra tekrar deneyin."
+                else:
+                    yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
+                return
 
     yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen daha sonra tekrar deneyin."
 
