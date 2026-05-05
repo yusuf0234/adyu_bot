@@ -215,13 +215,19 @@ async def _gemini_stream(question: str, context: str, max_retries: int = 1):
             return  # success
         except Exception as e:
             err_str = str(e).lower()
+            print(f"[LLM] Gemini attempt {attempt} failed: {e}")
             is_retryable = any(code in err_str for code in ("429", "503", "rate_limit", "overloaded"))
+            
             if is_retryable and attempt < max_retries:
-                print(f"[LLM] Gemini retryable error (attempt {attempt+1}): {e}. Waiting {delay:.1f}s…")
                 await asyncio.sleep(delay)
                 delay *= 2
+                continue
             else:
-                raise
+                if "429" in err_str or "rate" in err_str:
+                    yield "Sistem şu an çok yoğun (Gemini hız sınırı), lütfen birkaç saniye sonra tekrar deneyin."
+                else:
+                    yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
+                return
 
 
 # ── Public streaming API ───────────────────────────────────────────────────────
@@ -238,21 +244,23 @@ async def generate_answer_stream(question: str, context: str):
         yield "Bu asistan yalnızca Adıyaman Üniversitesi kapsamında hizmet vermektedir."
         return
 
-    if groq_client:
-        try:
-            async for chunk in _groq_stream(question, context):
-                yield chunk
-            return
-        except Exception as e:
-            print(f"[LLM] Groq failed, falling back to Gemini: {e}")
-
+    # Try Gemini first (better rate limits and context window)
     if gemini_client:
         try:
             async for chunk in _gemini_stream(question, context):
                 yield chunk
             return
         except Exception as e:
-            print(f"[LLM] Gemini error: {e}")
+            print(f"[LLM] Gemini failed, falling back to Groq: {e}")
+
+    # Fallback to Groq
+    if groq_client:
+        try:
+            async for chunk in _groq_stream(question, context):
+                yield chunk
+            return
+        except Exception as e:
+            print(f"[LLM] Groq failed: {e}")
 
     yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen daha sonra tekrar deneyin."
 
