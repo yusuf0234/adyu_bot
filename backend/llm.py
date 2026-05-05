@@ -176,10 +176,16 @@ async def _groq_stream(question: str, context: str, max_retries: int = 3):
             return  # success
         except Exception as e:
             err_str = str(e).lower()
-            print(f"[LLM] Attempt {attempt} failed: {e}")
-            is_retryable = any(code in err_str for code in ("429", "503", "rate_limit", "overloaded"))
+            print(f"[LLM] Groq attempt {attempt} failed: {e}")
+            is_rate_limit = any(code in err_str for code in ("429", "rate_limit"))
+            is_retryable = is_rate_limit or any(code in err_str for code in ("503", "overloaded"))
             
             if is_retryable and attempt < max_retries:
+                # ADAPTIVE TRUNCATION: If rate limited, reduce context drastically for the retry
+                if is_rate_limit:
+                    context = context[:len(context)//2]
+                    print(f"[LLM] Groq rate limit hit. Retrying with half context.")
+                
                 await asyncio.sleep(delay)
                 delay *= 2
                 continue
@@ -216,9 +222,15 @@ async def _gemini_stream(question: str, context: str, max_retries: int = 1):
         except Exception as e:
             err_str = str(e).lower()
             print(f"[LLM] Gemini attempt {attempt} failed: {e}")
-            is_retryable = any(code in err_str for code in ("429", "503", "rate_limit", "overloaded"))
+            is_rate_limit = any(code in err_str for code in ("429", "rate_limit"))
+            is_retryable = is_rate_limit or any(code in err_str for code in ("503", "overloaded"))
             
             if is_retryable and attempt < max_retries:
+                # ADAPTIVE TRUNCATION: If rate limited, reduce context drastically for the retry
+                if is_rate_limit:
+                    context = context[:len(context)//2]
+                    print(f"[LLM] Rate limit hit. Retrying with half context ({len(context)} chars).")
+                
                 await asyncio.sleep(delay)
                 delay *= 2
                 continue
