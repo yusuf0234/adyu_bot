@@ -190,11 +190,8 @@ async def _groq_stream(question: str, context: str, max_retries: int = 3):
                 delay *= 2
                 continue
             else:
-                if "429" in err_str or "rate" in err_str:
-                    yield "Sistem şu an çok yoğun (hız sınırı), lütfen birkaç saniye sonra tekrar deneyin."
-                else:
-                    yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
-                return
+                # Raise to allow fallback in generate_answer_stream
+                raise e
 
 
 # ── Gemini streaming with retry ────────────────────────────────────────────────
@@ -235,11 +232,8 @@ async def _gemini_stream(question: str, context: str, max_retries: int = 1):
                 delay *= 2
                 continue
             else:
-                if "429" in err_str or "rate" in err_str:
-                    yield "Sistem şu an çok yoğun (Gemini hız sınırı), lütfen birkaç saniye sonra tekrar deneyin."
-                else:
-                    yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
-                return
+                # Raise to allow fallback in generate_answer_stream
+                raise e
 
 
 # ── Public streaming API ───────────────────────────────────────────────────────
@@ -273,6 +267,12 @@ async def generate_answer_stream(question: str, context: str):
             return
         except Exception as e:
             print(f"[LLM] Groq failed: {e}")
+            err_str = str(e).lower()
+            if "429" in err_str or "rate" in err_str:
+                yield "Sistem şu an çok yoğun (hız sınırı), lütfen birkaç saniye sonra tekrar deneyin."
+            else:
+                yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen tekrar deneyin."
+            return
 
     yield "Cevap üretilirken teknik bir hata ile karşılaşıldı. Lütfen daha sonra tekrar deneyin."
 
