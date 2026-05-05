@@ -221,6 +221,13 @@ CORE_FACTS = [
         "Sağlık Kültür ve Spor Daire Başkanlığı: https://sksdb.adiyaman.edu.tr/ "
         "(Yemekhane, burs, yurt, sağlık hizmetleri)"
     )),
+    (["akademik takvim", "kayıt yenileme", "derslerin başlama", "final tarihleri", "bütünleme"], (
+        "Adıyaman Üniversitesi 2024-2025 Akademik Takvimi:\n"
+        "- Güz Yarıyılı: 16 Eylül 2024'te dersler başlar, 02-10 Ocak 2025'te final sınavları yapılır.\n"
+        "- Bahar Yarıyılı: 10 Şubat 2025'te dersler başlar, 02-13 Haziran 2025'te final sınavları yapılır.\n"
+        "- Bütünleme Sınavları: Güz için 20-24 Ocak 2025, Bahar için 23-27 Haziran 2025.\n"
+        "Detaylı takvim: https://static.adiyaman.edu.tr/files/1/tr/sayfalar/egitim/akademik-takvim/2024_2025_adyu_akademik_takvimi_lisans_onlisans.pdf"
+    )),
     (["abys", "akademik bilgi sistemi"], (
         "Adıyaman Üniversitesi Akademik Bilgi Yönetim Sistemi (ABYS): "
         "https://abys.adiyaman.edu.tr/ ve https://akademik.adiyaman.edu.tr/"
