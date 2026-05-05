@@ -466,7 +466,11 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
 
     # ── DuckDuckGo search ──────────────────────────────────────────────────────
     if DDGS is not None:
-        search_query = f"{question_lower} site:adiyaman.edu.tr"
+        search_query = f"{question_lower} Adıyaman Üniversitesi site:adiyaman.edu.tr"
+        if q_is_person:
+            search_query = f'"{question_lower}" Adıyaman Üniversitesi site:adiyaman.edu.tr'
+            # Force ABYS to top of priority
+            priority_urls = ["https://abys.adiyaman.edu.tr/", "https://akademik.adiyaman.edu.tr/"] + priority_urls
         cached_hrefs = _ddg_cache.get(search_query)
         if cached_hrefs is not None:
             ddg_urls.extend(cached_hrefs)
@@ -490,7 +494,9 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
     # ── Robust DDG HTML POST Fallback (if library failed) ──────────────────────
     if not ddg_urls:
         try:
-            raw_q = f"{question_lower} site:adiyaman.edu.tr"
+            raw_q = f"{question_lower} Adıyaman Üniversitesi site:adiyaman.edu.tr"
+            if q_is_person:
+                raw_q = f'"{question_lower}" Adıyaman Üniversitesi site:adiyaman.edu.tr'
             url = "https://html.duckduckgo.com/html/"
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0",

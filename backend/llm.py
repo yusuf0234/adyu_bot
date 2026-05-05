@@ -134,11 +134,12 @@ def _get_system_prompt() -> str:
             "2. Bağlamda '404', 'Hata', 'Sayfa Bulunamadı' gibi ifadeler varsa tamamen yoksay, yalnızca somut bilgilere odaklan.\n"
             "3. Bağlamda kesin yanıt yoksa ama ilgili bilgi varsa: 'Kesin bir bilgi bulamadım ancak web sitesinde şu bilgiler mevcut:' diyerek paylaş.\n"
             "4. Bağlamda HİÇBİR somut bilgi (tarih, birim, duyuru vb.) yoksa 'Bu konuda web sitesinde yeterli bilgi bulunamadı.' de.\n"
-            "5. KESİNLİKLE bağlam dışı genel bilgi veya kendi bilgi birikimini kullanma.\n"
+            "5. KESİNLİKLE bağlam dışı genel bilgi veya kendi bilgi birikimini kullanma. Eğer bağlamda aranan kişi 'Adıyaman Üniversitesi' ile ilgili değilse (örneğin siyasetçi veya başka bir kamu figürü ise), üniversite personeli olmadığını belirt.\n"
             "6. Selamlama sorularına asistan kimliğinle doğal ve kısa yanıt ver. 'Sen Adıyaman...' diye başlama.\n"
             "7. Yanıtlarını madde işaretleri ve başlıklar kullanarak düzenli sun.\n"
             "8. KESİNLİKLE SADECE Türkçe kullan. Asla Çince, Japonca veya İngilizce karıştırma.\n"
-            "9. Yanıtında asla 'Bağlam:', 'Soru:' veya 'Cevap:' kelimelerini tekrar etme. Doğrudan yanıtla başla."
+            "9. Yanıtında asla 'Bağlam:', 'Soru:' veya 'Cevap:' kelimelerini tekrar etme. Doğrudan yanıtla başla.\n"
+            "10. Eğer aranan kişi üniversite personeli ise ve bağlamda akademik/idari birimi varsa mutlaka belirt."
         )
     return _prompt_cache[today]
 
