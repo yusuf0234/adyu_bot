@@ -221,6 +221,10 @@ CORE_FACTS = [
         "Sağlık Kültür ve Spor Daire Başkanlığı: https://sksdb.adiyaman.edu.tr/ "
         "(Yemekhane, burs, yurt, sağlık hizmetleri)"
     )),
+    (["abys", "akademik bilgi sistemi"], (
+        "Adıyaman Üniversitesi Akademik Bilgi Yönetim Sistemi (ABYS): "
+        "https://abys.adiyaman.edu.tr/ ve https://akademik.adiyaman.edu.tr/"
+    )),
     (["kariyer", "kariyer merkezi", "staj merkezi"], (
         "Adıyaman Üniversitesi Kariyer ve Mezun İlişkileri Birimi staj ve kariyer rehberliği sunar. "
         "İletişim: https://www.adiyaman.edu.tr/"
