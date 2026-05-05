@@ -77,17 +77,46 @@ def check_forbidden_topics(question: str) -> bool:
     return any(word in q for word in FORBIDDEN_KEYWORDS)
 
 
-# ── Context trimmer (word-boundary safe) ──────────────────────────────────────
-def _trim_context(context: str) -> str:
-    """Trim context to MAX_CONTEXT_CHARS, cutting at the nearest space."""
+# \u2500\u2500 Context trimmer (intelligent prioritization) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r
+def _trim_context(context: str, question: str = "") -> str:
+    """
+    Trim context to MAX_CONTEXT_CHARS. 
+    If question is provided, prioritize blocks of text that contain keywords from the question.
+    """
     if len(context) <= MAX_CONTEXT_CHARS:
         return context
-    cut = context[:MAX_CONTEXT_CHARS]
-    # Walk back to last whitespace to avoid mid-word cut
-    last_space = cut.rfind(" ")
-    if last_space > MAX_CONTEXT_CHARS * 0.8:
-        cut = cut[:last_space]
-    return cut
+
+    # Simple heuristic: Split into paragraphs/blocks and prioritize those with question keywords
+    keywords = [w.lower() for w in question.split() if len(w) > 3]
+    if not keywords:
+        # Fallback to simple truncation if no good keywords
+        cut = context[:MAX_CONTEXT_CHARS]
+        last_space = cut.rfind(" ")
+        return cut[:last_space] if last_space > MAX_CONTEXT_CHARS * 0.8 else cut
+
+    blocks = context.split("\n\n")
+    prioritized = []
+    others = []
+    
+    current_len = 0
+    for block in blocks:
+        block_lower = block.lower()
+        if any(kw in block_lower for kw in keywords):
+            if current_len + len(block) < MAX_CONTEXT_CHARS:
+                prioritized.append(block)
+                current_len += len(block) + 2
+        else:
+            others.append(block)
+            
+    # Fill remaining space with other blocks
+    for block in others:
+        if current_len + len(block) < MAX_CONTEXT_CHARS:
+            prioritized.append(block)
+            current_len += len(block) + 2
+        else:
+            break
+            
+    return "\n\n".join(prioritized)
 
 
 # ── System prompt (cached per calendar day) ────────────────────────────────────
@@ -115,7 +144,7 @@ def _get_system_prompt() -> str:
 
 
 def _build_user_prompt(question: str, context: str) -> str:
-    trimmed = _trim_context(context)
+    trimmed = _trim_context(context, question)
     ctx_block = trimmed if trimmed else "Bağlam bilgisi bulunamadı."
     return f"Bağlam:\n{ctx_block}\n\nSoru: {question}\n\nCevap:"
 
