@@ -413,7 +413,7 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
                     f"{base}tr/yonetim/sube-mudurler",
                 ]
 
-    # All known administrative and academic subdomains for comprehensive person search
+        # All known administrative and academic subdomains for comprehensive person search
     _STAFF_SUBDOMAINS = [
         # Administrative
         "bidb", "oidb", "sksdb", "sgdb", "yidb", "imidb", "kutuphane", "personel",
@@ -468,34 +468,31 @@ async def _build_candidate_urls(question_lower: str) -> list[str]:
     else:
         safe_print("[live_search] Skipping DuckDuckGo search — library not available.")
 
-    # ── Google search fallback (if DDG returned nothing) ──────────────────────
+    # ── Robust DDG HTML POST Fallback (if library failed) ──────────────────────
     if not ddg_urls:
         try:
-            from urllib.parse import quote_plus, unquote
-            google_query = quote_plus(f"{question_lower} site:adiyaman.edu.tr")
-            google_url = f"https://www.google.com/search?q={google_query}&num=5&hl=tr"
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(8),
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept-Language': 'tr,en;q=0.9',
-                },
-                follow_redirects=True,
-            ) as google_client:
-                resp = await google_client.get(google_url)
+            raw_q = f"{question_lower} site:adiyaman.edu.tr"
+            url = "https://html.duckduckgo.com/html/"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3",
+            }
+            data = {"q": raw_q}
+            async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                resp = await client.post(url, data=data, headers=headers)
                 if resp.status_code == 200:
-                    found_links = re.findall(
-                        r'https?://[^\s"&]+\.adiyaman\.edu\.tr[^\s"&]*', resp.text
-                    )
-                    clean_links = []
-                    for link in found_links:
-                        link = unquote(link).split('&')[0].split('"')[0]
-                        if link not in clean_links and 'google' not in link:
-                            clean_links.append(link)
-                    ddg_urls.extend(clean_links[:5])
-                    safe_print(f"[live_search] Google fallback returned {len(clean_links[:5])} results")
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    raw_links = []
+                    for a in soup.find_all("a", class_="result__url"):
+                        href = a.get("href")
+                        if href and "adiyaman.edu.tr" in href and href not in raw_links:
+                            raw_links.append(href)
+                    ddg_urls.extend(raw_links[:5])
+                    safe_print(f"[live_search] DDG Raw POST returned {len(raw_links[:5])} results")
         except Exception as e:
-            safe_print(f"[live_search] Google fallback error: {e}")
+            safe_print(f"[live_search] DDG Raw POST error: {e}")
 
     # ── Deduplicate preserving priority order ──────────────────────────────────
     seen: set[str] = set()
